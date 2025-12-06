@@ -48,13 +48,13 @@ with tab1:
         
         with col2:
             st.markdown("##### 2. Chỉ số sinh tồn")
-            trestbps = st.number_input("Huyết áp lúc nghỉ (mm Hg)", min_value=50, max_value=250, value=120)
-            thalach = st.number_input("Nhịp tim tối đa (Max Heart Rate)", min_value=50, max_value=250, value=150)
+            trestbps = st.number_input("Huyết áp lúc nghỉ (mm Hg)", min_value=50, max_value=300, value=120)
+            thalach = st.number_input("Nhịp tim tối đa (Max Heart Rate)", min_value=30, max_value=250, value=150)
             exang = st.selectbox("Đau ngực khi tập thể dục?", options=["Không", "Có"])
 
         with col3:
             st.markdown("##### 3. Chỉ số xét nghiệm")
-            chol = st.number_input("Cholesterol (mg/dl)", min_value=100, max_value=600, value=200)
+            chol = st.number_input("Cholesterol (mg/dl)", min_value=80, max_value=600, value=200)
             fbs = st.selectbox("Đường huyết lúc đói > 120 mg/dl?", options=["Sai (False)", "Đúng (True)"])
             restecg = st.selectbox("Điện tâm đồ lúc nghỉ", 
                                    options=["Bình thường", "Sóng ST-T bất thường", "Phì đại thất trái"])
@@ -76,8 +76,42 @@ with tab1:
         # NÚT DỰ ĐOÁN (Trung tâm của Form)
         submit_button = st.form_submit_button("🚀 PHÂN TÍCH NGUY CƠ NGAY", use_container_width=True)
 
-    # --- XỬ LÝ KẾT QUẢ (LOGIC GIẢ LẬP - SẼ THAY BẰNG AI SAU) ---
+    # --- XỬ LÝ KẾT QUẢ (BAO GỒM VALIDATION & LOGIC GIẢ LẬP) ---
     if submit_button:
+        
+        # --- PHẦN VALIDATE DỮ LIỆU (MỚI THÊM VÀO) ---
+        warning_msg = []
+        
+        # Logic 1: Huyết áp quá cao nhưng nhịp tim quá thấp (Vô lý về mặt sinh lý học)
+        if trestbps > 200 and thalach < 55:
+            warning_msg.append("⚠️ **Cảnh báo dữ liệu:** Huyết áp lúc nghỉ rất cao (>200) nhưng nhịp tim tối đa lại quá thấp (<55). Vui lòng kiểm tra lại thiết bị đo.")
+            
+        # Logic 2: Tuổi trẻ nhưng Cholesterol quá cao (Cần chú ý đặc biệt)
+        if chol > 600:
+             warning_msg.append("⚠️ **Nghi vấn nhập liệu:** Chỉ số Cholesterol > 600 mg/dl là cực kỳ hiếm gặp. Bạn có chắc mình nhập đúng không?")
+        
+        # Trường hợp B: Nhóm TRẺ (<30 tuổi) - Cảnh báo về Gen di truyền
+        elif age < 30 and chol > 260:
+             warning_msg.append("⚠️ **Cảnh báo Y khoa (Nhóm trẻ):** Bệnh nhân còn trẻ (<30) nhưng Cholesterol rất cao. Đây có thể là dấu hiệu rối loạn mỡ máu di truyền.")
+             
+        # Trường hợp C: Nhóm TRUNG NIÊN (30-50 tuổi) - Cảnh báo về Lối sống
+        elif 30 <= age <= 50 and chol > 240:
+             warning_msg.append("⚠️ **Cảnh báo (30-50 tuổi):** Chỉ số Cholesterol vượt ngưỡng an toàn (>240 mg/dl). Ở độ tuổi này, cần xem xét lại chế độ ăn uống và vận động.")
+
+        # Trường hợp D: Nhóm CAO TUỔI (>50 tuổi) - Cảnh báo Bệnh lý
+        elif age > 50 and chol > 280:
+             warning_msg.append("ℹ️ **Lưu ý (Trên 50 tuổi):** Chỉ số Cholesterol đang ở mức cao (>280 mg/dl), nguy cơ xơ vữa động mạch tăng cao.")
+
+        # Logic 3: Có đau ngực khi tập nhưng nhịp tim tối đa ghi nhận lại thấp
+        if exang == "Có" and thalach < 70:
+             warning_msg.append("⚠️ **Lưu ý:** Bệnh nhân có đau ngực khi gắng sức nhưng nhịp tim tối đa ghi nhận lại khá thấp (<70).")
+
+        # Hiển thị các cảnh báo (nếu có) trước khi chạy AI
+        if warning_msg:
+            for msg in warning_msg:
+                st.warning(msg)
+
+        # --- PHẦN CHẠY AI (HIỆN TẠI LÀ GIẢ LẬP) ---
         with st.spinner("Đang phân tích dữ liệu với AI..."):
             time.sleep(2) # Giả vờ AI đang suy nghĩ
             
@@ -87,7 +121,12 @@ with tab1:
             if age > 55: risk_score += 30
             if chol > 240: risk_score += 30
             if trestbps > 140: risk_score += 20
+            # Thêm logic giả theo góp ý của thầy (Đau ngực khi tập = trọng số cao)
+            if exang == "Có": risk_score += 15 
             
+            # Giới hạn max 100
+            if risk_score > 100: risk_score = 99
+
             # Hiển thị kết quả
             st.write("---")
             st.subheader("📋 Kết quả Phân tích")
