@@ -34,7 +34,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # --- HÀM LOAD MODEL THÔNG MINH ---
-@st.cache_resource
+@st.cache_resource(ttl=0)
 def load_model():
     # Danh sách các đường dẫn có thể chứa file model
     possible_paths = [
